@@ -427,10 +427,12 @@ endif()
 
 if (onnxruntime_USE_MKLDNN)
   list(APPEND onnx_test_libs mkldnn)
-  add_custom_command(
+  if (onnxruntime_MKLDNN_LIBRARY_TYPE STREQUAL SHARED)
+    add_custom_command(
     TARGET ${test_data_target} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy ${MKLDNN_LIB_DIR}/${MKLDNN_SHARED_LIB} $<TARGET_FILE_DIR:${test_data_target}>
     )
+  endif()
 endif()
 
 if (onnxruntime_USE_MKLML)
@@ -516,7 +518,7 @@ endif()
 
 # shared lib
 if (onnxruntime_BUILD_SHARED_LIB)
-  if (UNIX)
+  if (NOT APPLE AND UNIX)
     # test custom op shared lib
     file(GLOB onnxruntime_custom_op_shared_lib_test_srcs "${ONNXRUNTIME_ROOT}/test/custom_op_shared_lib/test_custom_op.cc")
     add_library(onnxruntime_custom_op_shared_lib_test SHARED ${onnxruntime_custom_op_shared_lib_test_srcs})
