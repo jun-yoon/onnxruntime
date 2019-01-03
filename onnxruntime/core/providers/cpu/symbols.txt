@@ -16,6 +16,7 @@ OrtCreateCpuExecutionProviderFactory
 OrtCreateDefaultAllocator
 OrtCreateRunOptions
 OrtCreateSession
+OrtCreateSessionWithModelBytes
 OrtCreateSessionOptions
 OrtCreateTensorAsOrtValue
 OrtCreateTensorTypeAndShapeInfo

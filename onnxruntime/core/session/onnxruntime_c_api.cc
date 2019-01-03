@@ -388,6 +388,59 @@ static OrtStatus* CreateSessionImpl(_In_ OrtEnv* env, _In_ T model_path,
   API_IMPL_END
 }
 
+static OrtStatus* CreateSessionImpl(_In_ OrtEnv* env,
+                                    _In_ const unsigned char* model_buf, _In_ size_t model_buf_len,
+                                    _In_ const OrtSessionOptions* options,
+                                    _Out_ OrtSession** out) {
+  class memstream : public std::istream {
+  public:
+      memstream(const uint8_t *p, size_t l) :
+              std::istream(&_buffer),
+              _buffer(p, l) {
+        rdbuf(&_buffer);
+      }
+
+  private:
+      class membuf : public std::basic_streambuf<char> {
+      public:
+          membuf(const uint8_t *p, size_t l) {
+            setg((char*)p, (char*)p, (char*)p + l);
+          }
+      };
+
+      membuf _buffer;
+  };
+
+  API_IMPL_BEGIN
+    auto sess = std::make_unique<::onnxruntime::InferenceSession>(options == nullptr ? onnxruntime::SessionOptions() : options->value, env->loggingManager);
+    Status status;
+    if (options != nullptr && !options->custom_op_paths.empty()) {
+      status = sess->LoadCustomOps(options->custom_op_paths);
+      if (!status.IsOK())
+        return ToOrtStatus(status);
+    }
+    if (options != nullptr)
+      for (OrtProviderFactoryInterface** p : options->provider_factories) {
+        OrtProvider* provider;
+        OrtStatus* error_code = (*p)->CreateProvider(p, &provider);
+        if (error_code)
+          return error_code;
+        sess->RegisterExecutionProvider(std::unique_ptr<onnxruntime::IExecutionProvider>(
+                reinterpret_cast<onnxruntime::IExecutionProvider*>(provider)));
+      }
+
+    memstream model_stream(model_buf, model_buf_len);
+    status = sess->Load(model_stream);
+    if (!status.IsOK())
+      return ToOrtStatus(status);
+    status = sess->Initialize();
+    if (!status.IsOK())
+      return ToOrtStatus(status);
+    *out = reinterpret_cast<OrtSession*>(sess.release());
+    return nullptr;
+  API_IMPL_END
+}
+
 #ifdef _WIN32
 ORT_API_STATUS_IMPL(OrtCreateSession, _In_ OrtEnv* env, _In_ const wchar_t* model_path,
                     _In_ const OrtSessionOptions* options, _Out_ OrtSession** out) {
@@ -403,6 +456,14 @@ ORT_API_STATUS_IMPL(OrtCreateSession, _In_ OrtEnv* env, _In_ const char* model_p
   API_IMPL_END
 }
 #endif
+
+ORT_API_STATUS_IMPL(OrtCreateSessionWithModelBytes, _In_ OrtEnv* env,
+                    _In_ const unsigned char* model_buf, _In_ size_t model_buf_len,
+                    _In_ const OrtSessionOptions* options, _Out_ OrtSession** out) {
+  API_IMPL_BEGIN
+    return CreateSessionImpl(env, model_buf, model_buf_len, options, out);
+  API_IMPL_END
+}
 
 ORT_API_STATUS_IMPL(OrtRun, _In_ OrtSession* sess,
                     _In_ OrtRunOptions* run_options,
