@@ -114,7 +114,9 @@ LoggingManager::LoggingManager(std::unique_ptr<ISink> sink, Severity default_min
 LoggingManager::~LoggingManager() {
   if (owns_default_logger_) {
     // lock mutex to reset DefaultLoggerManagerInstance() and free default logger from this instance.
-    std::lock_guard<std::mutex> guard(DefaultLoggerMutex());
+
+    // by Jun Yoon: this cause a problem on program exit because DefaultLoggerMutex() return invalid mutex.
+    // std::lock_guard<std::mutex> guard(DefaultLoggerMutex());
 
     DefaultLoggerManagerInstance().store(nullptr, std::memory_order::memory_order_release);
 
