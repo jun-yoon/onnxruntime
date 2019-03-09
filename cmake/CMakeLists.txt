@@ -103,12 +103,14 @@ if (MSVC)
   #Disable 4100 globally. Too many this kind errors in protobuf
   SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4100")
 else()
-  # Enable OpenMP for Non-Windows only. WinML team disallows use of OpenMP.
-  find_package(OpenMP)
-  if (OPENMP_FOUND)
-      set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
-      set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
-      add_definitions(-DUSE_OPENMP)
+  if (onnxruntime_USE_OPENMP)
+    # Enable OpenMP for Non-Windows only. WinML team disallows use of OpenMP.
+    find_package(OpenMP)
+    if (OPENMP_FOUND)
+        set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
+        set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+        add_definitions(-DUSE_OPENMP)
+    endif()
   endif()
 endif()
 
